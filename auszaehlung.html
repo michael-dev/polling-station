@@ -1,0 +1,486 @@
+<html>
+ <head>
+  <title>Stimmauszählung</title>
+  <link type="text/css" href="css/smoothness/jquery-ui-1.8.12.custom.css" rel="stylesheet" />
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <script type="text/javascript" src="js/jquery-1.5.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery-ui-1.8.12.custom.min.js"></script>
+  <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
+  <script type="text/javascript">
+   var wahlNames = Array();
+   var wahlId = null;
+   var kandidatNames = Array();
+   var stapelNumVotes = Array();
+   var stapelId = null;
+   var numVotes;
+   var currentBallotId = -1;
+   var currentBallotVotes = Array();
+   var currentBallotInvalid = null;
+   var maxVoteCheckCount = 99;
+   var sessionId = randomString();
+   var lastChar = null;
+   var currentStapelBallotCounter = 0;
+
+   function randomString() {
+   	var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+   	var string_length = 32;
+   	var randomstring = '';
+   	for (var i=0; i<string_length; i++) {
+   		var rnum = Math.floor(Math.random() * chars.length);
+   		randomstring += chars.substring(rnum,rnum+1);
+   	}
+   	return randomstring;
+   }
+   $(function() {
+    $('.wahlSelect').change(function() {
+       selectWahl($(this).val());
+      });
+    $('.stapelSelect').change(function() {
+       selectStapel($(this).val());
+      });
+    $( "#tabs" ).tabs({
+     select: function(event, ui) {
+      var isValid = true;
+      if (ui.panel.id == "Stapeluebersicht") {
+       if (stapelId == null || typeof(stapelId) =='undefined') {
+        isValid = false;
+        alert("Bitte wähle zunächst einen Stapel aus. Dies kannst du in den Reitern Stimmzettel erfassen/überprüfen machen.");
+       }
+      }
+      return isValid;
+     },
+     show: function (event, ui) {
+      if (ui.panel.id == "Stapel") {
+       loadWahl();
+      }
+      if (ui.panel.id == "Erfassen") {
+       $('#erfSave').focus();
+       currentBallotId = -1;
+       displayBallotId();
+      }
+      if (ui.panel.id == "Ueberpruefen") {
+       loadVerify();
+      }
+      if (ui.panel.id == "Stapeluebersicht") {
+       $('#vrfSave').focus();
+       stapelZusammenfassung();
+      }
+     }
+    });
+    displayBallotId();
+    $('#maxVoteCheckCount').text(maxVoteCheckCount);
+    $(document).keypress(function(event) {
+      var $tabs = $('#tabs').tabs();
+      var selected = $tabs.tabs('option', 'selected');
+      if (selected == 0) return;
+      if (event.keyCode == 27) {
+       lastChar = null;
+       $('.Kandidat input').attr("checked", false);
+       return;
+      }
+      if (!event.which) return;
+      var charCode = event.which; //(event.which) ? event.which : window.event.keyCode;
+      var keyChar = String.fromCharCode(charCode);
+      var re = /[0-9]/;
+      if (re.test(keyChar)) {
+       event.preventDefault();
+       /*
+       nr = charCode - "0".charCodeAt(0);
+       if (/[a-z]/.test(keyChar)) {
+         nr = 10 + charCode - "a".charCodeAt(0);
+       }
+       */
+       var nr = parseInt(keyChar);
+       if (lastChar != null) {
+        nr += lastChar * 10;
+        nr -= 1;
+        var checked = $('input.Kandidat'+nr).is(":checked");
+        $('input.Kandidat'+nr).attr("checked", ! checked);
+        lastChar = null;
+       } else {
+        lastChar = parseInt(keyChar);
+       }
+       $(document).focus();
+      } else {
+       lastChar = null;
+      }
+    });
+    checkAuth();
+    $(document).everyTime("1s", function() { checkAuth(); });
+   });
+   /* header */
+   function checkAuth() {
+    $.post("action/checkauth.php").success(function(r) {
+       $('#loginbar').text('Sie sind als ' + r + ' authentifiziert.');
+       $('#loginbar').append('&nbsp;<a href="./action/relogin.php?nouser=' + escape(r) + '">Logout</a>');
+     } ).error(function() {
+       $('#loginbar').text('Sie sind nicht authentifiziert.');
+     });
+    var selected = $('#tabs').tabs().tabs('option', 'selected');
+    if (wahlId != null && stapelId != null && selected > 0) {
+     $.post("action/refreshballot.php", {wahl: wahlId, id: stapelId, session: sessionId});
+    }
+   }
+   function displayBallotId() {
+    $('#nextFreeBallotId').text(currentBallotId);
+    $('#ballotId').text(currentBallotId);
+   }
+   /* Wahlen */
+   function loadWahl() {
+    $('.wahlSelect option').remove();
+    $.post("action/wahl.php", {}, function(r, textStatus, jqXHR) {
+     var lId;
+     wahlNames = Array();
+     jQuery.each(r, function(i, val) {
+      $('.wahlSelect').append(new Option(val.name, val.id,true,true));
+      lId = val.id;
+      wahlNames[val.id] = val.name;
+     });
+     selectWahl(lId);
+    }).error(function(r) { alert("Die Wahlen konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function selectWahl(id) {
+    wahlId = id;
+    $('.wahlSelect').val(wahlId);
+    $('.txtWahl').text(wahlNames[wahlId]);
+    loadStapel();
+    loadKandidat();
+   }
+
+   /** Stapel */
+   function saveStapel() {
+    $.post("action/savestapel.php", {wahl: wahlId, numVotes: $('#numVotes').val()}, function(r, textStatus, jqXHR) {
+      alert("Bitte notieren: Der Stapel hat die Nummer " + wahlId + "/" + r.id);
+      $( "#tabs").tabs('select', '#Erfassen');
+      loadStapel(r.id);
+    }).error(function(r) {
+     alert("Der Stapel konnte nicht angelegt werde.\n"+r.responseText);
+    });
+   }
+
+   function loadStapel(id) {
+    currentStapelBallotCounter = 0;
+    $('.stapelSelect option').remove();
+    $.post("action/stapel.php", {wahl: wahlId}, function(r, textStatus, jqXHR) {
+     stapelNumVotes = Array();
+     var lId;
+     jQuery.each(r, function(i, val) {
+      $('.stapelSelect').append(new Option(wahlId+"/"+val.id, val.id,true,true));
+      stapelNumVotes[val.id] = val.numVotes;
+      lId = val.id;
+     });
+     if (id) {
+      selectStapel(id);
+     } else {
+      selectStapel(lId);
+     }
+    }).error(function(r) { alert("Die Stapel konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function selectStapel(id) {
+    stapelId = id;
+    numVotes = stapelNumVotes[stapelId];
+    $('.stapelSelect').val(stapelId);
+    $('.numVotesText').text(numVotes);
+    $('.txtStapel').text(wahlId + "/" + stapelId);
+    var $tabs = $('#tabs').tabs();
+    var selected = $tabs.tabs('option', 'selected');
+    if (selected == 2) { loadVerify(); }
+   }
+
+   /** Kandidatenliste */
+
+   function loadKandidat() {
+    $('.Kandidat').remove();
+    $.post("action/kandidat.php", {wahl: wahlId}, function(r, textStatus, jqXHR) {
+     kandidatNames = Array();
+     jQuery.each(r, function(i, val) {
+      kandidatNames[val.id] = val.name;
+      jQuery.each($('.Kandidaten'), function(j, container) {
+       var ediv = $('<div>');
+       ediv.attr("class","Kandidat");
+       $(container).append(ediv);
+       var ptxt = $('<label style="width:30px; display:inline-block;" for="kandidat['+i+']['+j+']"></label>');
+       accessKey = parseInt(val.id)+1;
+/*       if (accessKey > 9) {
+        accessKey = accessKey + ("a".charCodeAt(0)) - 10;
+        accessKey = String.fromCharCode(accessKey);
+       }
+*/
+       var aKP = (accessKey < 10 ? '0' : '') + accessKey;
+       ptxt.text(aKP);
+       ptxt.appendTo($(ediv));
+       var elem = $('<input type="checkbox">');
+       elem.attr("name","kandidat["+i+"]");
+       elem.attr("id","kandidat["+i+"]["+j+"]");
+       elem.attr("class","Kandidat"+i);
+       elem.attr("value",val.id);
+       elem.appendTo($(ediv));
+       var txt = $('<label for="kandidat['+i+']['+j+']"></label>');
+       txt.text(val.name);
+       txt.appendTo($(ediv));
+      });
+     });
+    }).error(function(r) { alert("Die Kandidaten konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   /** Stimmzettel erfassen */
+   function changeBallotId() {
+    var ballotId = prompt("Die nächste (freie) Stimmzettelnummer: ", currentBallotId);
+    if (ballotId != null) {
+     currentBallotId = parseInt(ballotId);
+     displayBallotId();
+    }
+    $(window).focus();
+    return false;
+   }
+
+   function saveBallot() {
+    if (currentBallotId <= 0) changeBallotId();
+    if (currentBallotId <= 0) {
+     alert("Nummer immernoch ungültig.");
+     return;
+    }
+    // check num votes
+    var checkedVotes = $('#Erfassen .Kandidat input:checked');
+    if (checkedVotes.length != numVotes ) {
+     if (!confirm("Ungültige Anzahl an Stimmen. Wirklich speichern?")) {
+      return;
+     }
+    }
+    var votes = Array();
+    jQuery.each(checkedVotes, function (i, val) {
+     votes.push($(val).val());
+    });
+    var invalid = false;
+    if (votes.length == 0) {
+     invalid = confirm("Ist der Stimmzettel ungültig? OK=JA");
+    }
+    // check currentStapelBallotCounter
+    if (currentStapelBallotCounter > 100) {
+     if (confirm("Sie haben sehr viele Stimmzettel für die aktuellen Stapel erfasst. Sie sollten einen neuen Stapel anfangen! OK=NICHT SPEICHERN")) {
+      alert("Der Stimmzettel wurde nicht gespeichert.");
+      return;
+     } else {
+      currentStapelBallotCounter = currentStapelBallotCounter / 2;
+     }
+    }
+    // save
+    $.post("action/saveballot.php",{"wahl":wahlId, "stapel": stapelId, "id":currentBallotId, "votes":votes, "session":sessionId, "invalid":invalid ? 1 : 0}).success(function(r) {
+      if (r.status == "OK") {
+        currentStapelBallotCounter = currentStapelBallotCounter + 1;
+        alert("Bitte notieren: Stimmzettelnummer "+wahlId+"/"+currentBallotId);
+        $('.Kandidat input').attr("checked", false);
+        // increment id
+        currentBallotId++;
+        displayBallotId();
+      } else {
+        alert("Der Stimmzettel wurde nicht gespeichert.\n"+r.status);
+      }
+     } ).error(function(r) {
+      alert("Der Stimmzettel wurde nicht gespeichert.\n"+r.responseText);
+     });
+   }
+
+   /** Stapelübersicht */
+   function stapelZusammenfassung() {
+     $('#uebTable tr.dataRow').remove();
+     $.post("action/statstapel.php", {wahl:wahlId, stapel:stapelId}, function(r, textStatus, jqXHR) {
+        var numVotesTotal = 0;
+        jQuery.each(r.votes, function(i, val) {
+          $('#uebTable tr:last').after('<tr class="dataRow"><td>'+wahlId+"/"+val.id+'</td><td class="kname">'+val.kandidatname+'</td><td class="kvotes">'+val.numVotes+'</td></tr>');
+          numVotesTotal += parseInt(val.numVotes);
+        });
+        if (r.length == 0) {
+         alert("Es liegen keine Kandidaten vor.");
+        } else {
+         $('#uebTable tr:last').after('<tr class="dataRow"><th colspan="2">Gesamtzahl an Stimmen</td><th class="kvotes">'+numVotesTotal+'</td></tr>');
+         $('#uebTable tr:last').after('<tr class="dataRow"><th colspan="2">ungültige Stimmzettel</td><th class="kvotes">'+r.invalid+'</td></tr>');
+         $('#uebTable tr:last').after('<tr class="dataRow"><th colspan="2">gültige Stimmzettel</td><th class="kvotes">'+r.valid+'</td></tr>');
+        }
+     }).error(function(r) { alert("Die Stapel konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function showStapelPDF() {
+    self.location.href="action/statstapelpdf.php?wahl="+wahlId+"&stapel="+stapelId+"&nonce="+(new Date()).getTime();
+   }
+
+   /** Stimmzettel überprüfen */
+   function loadVerify() {
+     // get first vote
+     currentBallotId = -1;
+     nextVerify(false);
+   }
+
+   function nextVerify(confirmCurrentBallot, callback) {
+     var data = {wahl:wahlId, stapel:stapelId, minNext: currentBallotId + 1, session: sessionId, maxNumOk: maxVoteCheckCount};
+     if (confirmCurrentBallot) {
+       var checkedVotes = $('#Ueberpruefen .Kandidat input:checked');
+       var votes = Array();
+       var votesTxt = Array();
+       var votesNames = Array();
+       jQuery.each(checkedVotes, function (i, val) {
+        var id = $(val).val(); // Kandidat-ID
+        votes.push(id);
+        votesTxt.push(parseInt(id)+1);
+        votesNames.push(kandidatNames[id]);
+       });
+
+       var invalid = false;
+       if (votes.length == 0) {
+        invalid = confirm("Ist der Stimmzettel ungültig? OK=JA");
+       }
+
+       var currentBallotVotesNames = Array();
+       var currentBallotVotesTxt = Array();
+       for (i=0; i < currentBallotVotes.length; i++) {
+        currentBallotVotesNames.push(kandidatNames[currentBallotVotes[i]]);
+        currentBallotVotesTxt.push(parseInt(currentBallotVotes[i]) + 1);
+       }
+
+       // compare votes and currentBallotVotes
+       var areTheSame = (votes.length == currentBallotVotes.length && currentBallotInvalid == invalid);
+       if (areTheSame) {
+        for (i=0; i < votes.length; i++) {
+         areTheSame = areTheSame && (votes[i] == currentBallotVotes[i]);
+        }
+       }
+
+       // handle difference
+       if (!areTheSame) {
+        if (checkedVotes.length != numVotes ) {
+         if (!confirm("Ungültige Anzahl an Stimmen ("+numVotes+"!="+checkedVotes.length+"). Wirklich speichern?")) {
+           return;
+         }
+        }
+        if (!confirm("Fehlerhafte Eingabe gefunden.\nStimmzettel: "+wahlId+"/"+stapelId+"/"+currentBallotId+"\nNeue Eingabe: "+ (invalid ? "ungültiger Stimmzettel" : votes.length == 0 ? "leerer Stimmzettel" : votesNames+" ("+votesTxt+")" ) + "\nGespeicherte Eingabe: "+ (currentBallotInvalid ? "ungültiger Stimmzettel" : currentBallotVotes.length == 0 ? "leerer Stimmzettel" : currentBallotVotesNames+" ("+currentBallotVotesTxt+")") + "\nDatensatz korrigieren? (OK=JA)")) {
+         return;
+        }
+        data.modify = currentBallotId;
+        data.newVotes = votes;
+        data.invalid = invalid ? 1 : 0;
+       } else {
+        data.confirm = currentBallotId;
+       }
+     }
+     $('vrfSave').removeAttr('disabled');
+     $.post("action/verifyballot.php", data, function(r, textStatus, jqXHR) {
+      if (r.status != "OK") {
+       alert(r.status);
+      } else {
+       $('.Kandidat input').attr("checked", false);
+       if (r.found) {
+        currentBallotVotes = r.votes;
+        currentBallotInvalid = (parseInt(r.invalid) == 1);
+        currentBallotId = parseInt(r.id);
+        displayBallotId();
+        $('#vrfSave').focus();
+       } else {
+        if (confirmCurrentBallot) {
+         $('#tabs').tabs('select', '#Stapeluebersicht');
+        } else {
+         alert("Der aktuelle Stapel hat keine erfassten Stimmzettel, welche noch überprüft werden müssten.");
+         $('vrfSave').attr('disabled','disabled');
+        }
+       }
+      }
+      if (callback) {
+       callback();
+      }
+     }).error(function(r) { alert("Der Stimmzettel konnte nicht geladen/bestätigt werden.\n"+r.responseText); });
+   }
+
+   function changeMaxVoteCheckCount() {
+    var newMaxVoteCheckCount = prompt("Neuer Schwellwert für (maximale) Anzahl an (erfolgreichen) Überprüfungen je Stimmzettel:",maxVoteCheckCount);
+    if (newMaxVoteCheckCount != null) {
+     maxVoteCheckCount = parseInt(newMaxVoteCheckCount);
+     $('#maxVoteCheckCount').text(maxVoteCheckCount);
+     nextVerify(false);
+    }
+   }
+
+   function jumpToBallot() {
+     var ballotId = prompt("Nicht speichern und zu folgendem Stimmzettel springen?",currentBallotId);
+     if (ballotId == null) {
+      return;
+     }
+     currentBallotId = parseInt(ballotId)-1;
+     nextVerify(false, function() {
+      if (parseInt(currentBallotId) != parseInt(ballotId)) {
+       alert("Der Stimmzettel wurde nicht gefunden. Wurden Stapel, Filter und Wahl korrekt ausgewählt?");
+      }
+     });
+     return false;
+   }
+  </script>
+  <style type="text/css">
+    #tabs > div { min-height: 600px; }
+    #Wahlen input.Kandidat { display: block; }
+    #nextFreeBallotId:hover, #ballotId:hover { border: thin solid black; }
+    #nextFreeBallotId, #ballotId { display: inline-block; min-width: 40px; border: thin solid white; }
+    #nextFreeBallotId, #ballotId { font-size: 30pt; }
+    #maxVoteCheckCount:hover { border: thin solid black; }
+    #maxVoteCheckCount { display: inline-block; min-width: 40px; border: thin solid white; }
+    #uebTable td.kvotes { text-align: center; }
+  </style>
+ </head>
+ <body>
+  <div id="loginbar">&nbsp;</div>
+  <div id="tabs">
+   <ul>
+    <li><a href="#Stapel"><span>Stapel anlegen</span></a></li>
+    <li><a href="#Erfassen"><span>Stimmzettel erfassen</span></a></li>
+    <li><a href="#Ueberpruefen"><span>Stimmzettel überprüfen</span></a></li>
+    <li><a href="#Stapeluebersicht"><span>Stapelübersicht</span></a></li>
+   </ul>
+  <div id="Stapel">
+   <form onSubmit="return false;"><select id="stapelWahlSelect" class="wahlSelect"></select><br/>
+   <label for="numVotes">Anzahl der Stimmen je Zettel:</label><input type="text" name="numVotes" id="numVotes"/></form>
+   <button onClick="saveStapel();">Speichern</button>
+  </div>
+  <div id="Erfassen">
+   <form onSubmit="return false;">
+    Wahl: <select id="erfassenWahlSelect" class="wahlSelect"></select>
+    Stapel: <select id="erfassenStapelSelect" class="stapelSelect"></select>
+    <br/>
+    <span>Anzahl der Stimmen je Zettel:</span>
+    <span class="numVotesText"></span>&nbsp;
+    <br/>
+    <span>Nummer des Stimmzettels:</span>
+    <span id="nextFreeBallotId" onClick="return changeBallotId();"></span>
+   </form>
+   <div class="Kandidaten">
+   </div>
+   <br/>
+   <button onClick="saveBallot();" id="erfSave">Speichern</button>
+   <button onClick="$('#tabs').tabs('select', '#Stapeluebersicht');">Ende</button>
+  </div>
+  <div id="Ueberpruefen">
+   <form onSubmit="return false;">
+    Wahl: <select id="ueberpruefenWahlSelect" class="wahlSelect"></select>
+    Stapel: <select id="ueberpruefenStapelSelect" class="stapelSelect"></select>
+    <br/>
+    <span>Anzahl der Stimmen je Zettel:</span>
+    <span class="numVotesText"></span>
+    <br/>
+    <span>Nummer des Stimmzettels:</span>
+    <span id="ballotId" onClick="return jumpToBallot();"></span>
+    <br/>
+    <span>Maximale Anzahl an Überprüfungen (Filter):</span>
+    <span id="maxVoteCheckCount" onClick="return changeMaxVoteCheckCount();"></span>
+   </form>
+   <div class="Kandidaten">
+   </div>
+   <button onClick="nextVerify(true);" id="vrfSave">Weiter</button>
+  </div>
+  <div id="Stapeluebersicht">
+   <h2><button onClick="showStapelPDF();">PDF</button>&nbsp;Bitte Notieren</h2>
+   Wahl: <span class="txtWahl"></span><br/>
+   Stapel: <span class="txtStapel"></span><br/>
+   <table border="0" id="uebTable">
+    <tr><th colspan="2">Kandidat</th><th>Anzahl der Stimmen</th></tr>
+   </table>
+  </div>
+ </body>
+</html>

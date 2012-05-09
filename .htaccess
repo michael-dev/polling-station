@@ -1,0 +1,15 @@
+<Files "*admin.html">
+ AuthType Basic
+ AuthName AdminInterface
+ AuthBasicProvider file
+ AuthUserFile .htpasswd
+ Require valid-user
+ Allow from 127.0.0.0/8
+ Allow from ::1/128
+</Files>
+<Files ".htpasswd">
+ Deny from all
+</Files>
+<Files ".htaccess">
+ Deny from all
+</Files>

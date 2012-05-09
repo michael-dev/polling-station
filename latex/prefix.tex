@@ -1,0 +1,35 @@
+\documentclass[a4paper,10pt,ngerman,%%ORIENTATION%%]{article}
+
+\usepackage[utf8x]{inputenc}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage{rotating}
+\usepackage{geometry}
+\usepackage{lastpage}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{array}
+
+\geometry{a4paper, top=30mm, left=30mm, right=30mm, bottom=30mm,headsep=10mm, footskip=12mm}
+
+% PDF Optionen
+\hypersetup{
+  pdftitle={Wahlergebnis %%TITEL%%},
+  pdfauthor={Stura Ilmenau},
+  pdfborder={0 0 0}, % keine Rechteckmarkierung um Links 
+}
+\urlstyle{rm}
+
+%opening
+\title{Wahlergebnis %%TITEL%%}
+\author{StuRa Ilmenau}
+
+\makeatletter
+\renewcommand{\@evenfoot}{\normalsize\slshape \today\hfil Wahlergebnis %%TITEL%% \hfil \upshape Seite {\thepage} von \pageref{LastPage}}
+\renewcommand{\@oddfoot}{\@evenfoot}
+\makeatother
+
+\begin{document}
+
+\maketitle
+

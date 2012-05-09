@@ -1,0 +1,83 @@
+<html>
+ <head>
+  <title>elektronisches Wahllokal</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <style type="text/css">
+    body{ height:99% }
+    div.box {
+      display:block;
+      position:absolute;
+      width:33%;
+      height:49%;
+      text-align:center;
+/*      border: thick solid black;*/
+      border: outset;
+      margin:1px;
+    }
+    div.box#hover {
+      border: inset;
+    }
+    div.box a {
+      padding-top: 30%;
+      padding-bottom: 30%;
+      display:block;
+      color: black;
+      text-decoration: none;
+      font-size: 200%;
+    }
+    div.box a:hover {
+      text-decoration: underline;
+    }
+    #b1 {
+      top:0;
+      left:0;
+      background-color: yellow;
+    }
+    #b2 {
+      top:0;
+      left:33.33%;
+      background-color: red;
+    }
+    #b3 {
+      top:0;
+      right:0;
+      background-color: lightgreen;
+    }
+    #b4 {
+      bottom:0;
+      left:0;
+      background-color: orange;
+    }
+    #b5 {
+      bottom:0;
+      left:33.33%;
+      background-color: darkred;
+    }
+    #b6 {
+      bottom:0;
+      right:0;
+      background-color: darkgreen;
+    }
+</style>
+ </head>
+ <body>
+  <div class="box" id="b1">
+   <a href="stimmausgabe.html">Stimmausgabe</a>
+  </div>
+  <div class="box" id="b2">
+   <a href="stimmabgabe.html">Stimmabgabe</a>
+  </div>
+  <div class="box" id="b3">
+   <a href="auszaehlung.html">Auszählung</a>
+  </div>
+  <div class="box" id="b4">
+   <a href="stimmausgabeadmin.html">Administration Stimmausgabe</a>
+  </div>
+  <div class="box" id="b5">
+   <a href="stimmabgabeadmin.html">Administration Stimmabgabe</a>
+  </div>
+  <div class="box" id="b6">
+   <a href="auszaehlungadmin.html">Administration Auszählung</a>
+  </div>
+ </body>
+</html>

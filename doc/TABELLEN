@@ -1,0 +1,17 @@
+== Stammdaten ==
+fakultaet : Liste aller Fakultäten
+
+== Stimmausgabe und -abgabe ==
+stimmberechtigt : Wählerverzeichnis
+stimmen : ausgegebene Stimmzettel (nur Personen)
+ausgabezettel : ausgebene Stimmzettel (Personen + Gremium)
+eingesammelt : angenommene Stimmzettel (nur Personen)
+
+== Auszählung ==
+wahl : Liste aller Gremienwahlen
+kandidat : Kandidaten zu den Gremien
+stapel : Auszählungsstapel
+stimmzettel : Stimmzettel im Stapel
+zettelstimme : Kandidat auf Stimmzettel-Relation
+auszaehllog : Log
+

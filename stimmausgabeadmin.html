@@ -1,0 +1,223 @@
+<html>
+ <head>
+  <title>Administration Stimmabgabe</title>
+  <link type="text/css" href="css/smoothness/jquery-ui-1.8.12.custom.css" rel="stylesheet" />
+  <link type="text/css" href="css/jquery.fileupload-ui.css" rel="stylesheet" />
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <script type="text/javascript" src="js/jquery-1.5.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery-ui-1.8.12.custom.min.js"></script>
+  <script type="text/javascript" src="js/jquery.ui.datepicker-de.js"></script>
+  <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
+  <script type="text/javascript" src="js/jquery.fileupload.js"></script>
+  <script type="text/javascript" src="js/jquery.fileupload-ui.js"></script>
+  <script type="text/javascript">
+   $(function() {
+    $( "#tabs" ).tabs({
+     show: function (event, ui) {
+      $('#suchtext').autocomplete( "close" );
+      if (ui.panel.id == "Widersprueche") {
+        loadWid();
+       }
+      if (ui.panel.id == "Wahlbeteiligung") {
+        loadBet();
+       }
+      }
+     });
+    checkAuth();
+    $(document).everyTime("10s", function() { checkAuth(); });
+   });
+   /* header */
+   function checkAuth() {
+    $.post("action/checkauth.php").success(function(r) {
+       $('#loginbar').text('Sie sind als ' + r + ' authentifiziert.');
+       $('#loginbar').append('&nbsp;<a href="./action/relogin.php?nouser=' + escape(r) + '">Logout</a>');
+     } ).error(function() {
+       $('#loginbar').text('Sie sind nicht authentifiziert.');
+     });
+   }
+   /* save user */
+   function saveUser() {
+    var data = {name: $('#username').val(),
+                pass: $('#password').val()};
+    $.post("action/nutzeranlegen.php",data).success(function() { alert("Der Nutzer "+$('#username').val()+" wurde erstellt."); $('#username').val(""); $('#password').val("");}).error(function(r) { alert("Der Nutzer wurde nicht angelegt.\n"+r.responseText); });
+   }
+   /** handle Widerspruch */
+   function loadWid() {
+     $('#widerTable tr.dataRow').remove();
+     $.post("action/loadwiderspruch.php", {}, function(r, textStatus, jqXHR) {
+        jQuery.each(r, function(i, val) {
+          $('#widerTable tr:last').after('<tr class="dataRow" onClick="handlePerson('+val.id+','+val.mtknr+',\''+val.name+'\');"><td>'+val.id+'</td><td>'+val.mtknr+'</td><td>'+val.name+'</td><td>'+val.geburtsdatum+'</td><td>'+val.fak+'</td><td>'+val.studg+'</td></tr>');
+        });
+        if (r.length == 0) {
+         alert("Es liegen keine gespeicherten Widersprüche vor.");
+        }
+     }).error(function(r) { alert("Die Widersprüche konnten nicht geladen werden.\n"+r.responseText); });
+   }
+  function handlePerson(id, mtknr, name) {
+    $('#wDialogName').text(name);
+    $('#wDialogId').text(id);
+    $('#wDialogMtknr').text(mtknr);
+		$( "#wDialog" ).dialog("open");
+		$( "#wDialogAction" ).val('---');
+  }
+  function handleDialogSave() {
+		$( "#wDialog" ).dialog("close");
+    var data = {id: $('#wDialogId').text(),
+                action: $("#wDialogAction" ).val()};
+    $.post("action/removewiderspruch.php",data).success(function() {loadWid(); }).error(function(r) { alert("Es ist ein Fehler aufgetreten.\n"+r.responseText); });
+  }
+  $(function () {
+    $('#file_upload').fileUploadUI({
+        uploadTable: $('#files'),
+        buildUploadRow: function (files, index, handler) {
+            return $('<tr><td>' + files[index].name + '<\/td>' +
+                    '<td class="file_upload_progress"><div><\/div><\/td>' +
+                    '<td class="file_upload_cancel">' +
+                    '<button class="ui-state-default ui-corner-all" title="Abbruch">' +
+                    '<span class="ui-icon ui-icon-cancel">Abbruch<\/span>' +
+                    '<\/button><\/td><\/tr>');
+        },
+        buildDownloadRow: function (file, handler) {
+            return $('<tr><td>' + file.name + '<\/td><\/tr>');
+        },
+        onError: function (event, files, index, xhr, handler) {
+            alert('Es ist ein Fehler aufgetreten.\n' + xhr.responseText);
+       }
+    });
+    $(function() {
+		 $( "#wDialog" ).dialog({ autoOpen: false, modal: true });
+	  });
+  });
+  /** Wahlbeteiligung */
+  function loadBet() {
+     $('#beteilTable tr.dataRow').remove();
+     $('#beteilTable2 tr.dataRow').remove();
+     $.post("action/wahlbeteiligung.php", {}, function(r, textStatus, jqXHR) {
+        /* Aufschlüsselung nach Fakultäten */
+        var sumGesamt = 0;
+        var sumAusgegeben = 0;
+        jQuery.each(r.overview, function(i, val) {
+          var anteil;
+          if (val.gesamt > 0) {
+            anteil = Math.round(val.ausgegeben / val.gesamt * 100) + "%";
+          } else {
+            anteil = "n/a";
+          }
+          sumGesamt += parseInt(val.gesamt);
+          sumAusgegeben += parseInt(val.ausgegeben);
+          $('#beteilTable tr:last').after('<tr class="dataRow"><td>'+val.name+'</td><td align="center">'+val.ausgegeben+'</td><td align="center">'+val.gesamt+'</td><td align="right">'+anteil+'</td></tr>');
+        });
+        if (r.overview.length == 0) {
+          $('#beteilTable tr:last').after('<tr class="dataRow"><td colspan="4">Keine Daten</td></tr>');
+        } else {
+         var sumAnteil;
+         if (sumGesamt > 0) {
+           sumAnteil = Math.round(sumAusgegeben / sumGesamt * 100) + "%";
+         } else {
+           sumAnteil = "n/a";
+         }
+         $('#beteilTable tr:last').after('<tr class="dataRow"><th>Gesamt</th><th>'+sumAusgegeben+'</th><th>'+sumGesamt+'</th><th align="right">'+sumAnteil+'</th></tr>');
+        }
+        /* Aufschlüsselung nach Gremien */
+        sumAusgegeben = 0;
+        jQuery.each(r.detail, function(i, val) {
+          sumAusgegeben += parseInt(val.ausgegeben);
+          var zettel = val.zettel;
+          if (zettel.substr(0,6) == "fakrat") {
+           zettel = "Fakultätsrat " + zettel.substr(6);
+          } else if (zettel.substr(0,3) == "fsr") {
+           zettel = "Fachschaftsrat " + zettel.substr(3);
+          } else switch (zettel) {
+           case "stura":
+            zettel = "StuRa";
+            break;
+           case "glsr":
+            zettel = "Gleichstellungsrat";
+            break;
+           case "instwk":
+            zettel = "Institutsrat Werkstoffwissenschaften";
+            break;
+           case "instpk":
+            zettel = "Insitutsrat Physik";
+            break;
+           case "belega":
+            zettel = "Belegungsausschuss";
+            break;
+           default:
+            break;
+          }
+          $('#beteilTable2 tr:last').after('<tr class="dataRow"><td>'+zettel+'</td><td align="center">'+val.ausgegeben+'</td></tr>');
+        });
+        if (r.detail.length == 0) {
+          $('#beteilTable2 tr:last').after('<tr class="dataRow"><td colspan="2">Keine Daten</td></tr>');
+        } else {
+         $('#beteilTable2 tr:last').after('<tr class="dataRow"><th>Gesamt</th><th>'+sumAusgegeben+'</th></tr>');
+        }
+     }).error(function(r) { alert("Die Wahlbeteiligung konnte nicht geladen werden.\n"+r.responseText); });
+  }
+  </script>
+  <style type="text/css">
+    #tabs > div { min-height: 600px; }
+    #Widersprueche tr:nth-child(odd)    { background-color:#eee; }
+    #Widersprueche tr:nth-child(even)   { background-color:#fff; }
+    #Widersprueche tr:hover             { background-color:#ccc; }
+    #widerTable { width: 80%; }
+  </style>
+ </head>
+ <body>
+  <div id="loginbar">&nbsp;</div>
+  <div id="tabs">
+   <ul>
+    <li><a href="#Benutzer"><span>Wahlhelfer anlegen</span></a></li>
+    <li><a href="#Waehler"><span>Wählerimport</span></a></li>
+    <li><a href="#Widersprueche"><span>Widersprüche</span></a></li>
+    <li><a href="#Wahlbeteiligung"><span>Wahlbeteiligung (bei Ausgabe)</span></a></li>
+   </ul>
+  <div id="Benutzer">
+   <table border="0" style="width: 100%;">
+    <tr>
+     <th>Name</th>
+     <td><input type="text" name="name" id="username"/></td>
+    </tr>
+    <tr>
+     <th>Passwort</th>
+     <td><input type="password" name="password" id="password"/></td>
+    </tr>
+    <tr>
+     <td colspan="2"><button type="button" onClick="saveUser();" accesskey="s"><u>S</u>peichern</button></td>
+    </tr>
+   </table>
+  </div>
+  <div id="Waehler">
+   <form id="file_upload" action="action/importwaehler.php" method="POST" enctype="multipart/form-data">
+    <input type="file" name="file[]" multiple>
+    <button>Hochladen</button>
+    <div class="file_upload_label">CSV hochladen</div>
+   </form>
+   <table id="files"></table>
+  </div>
+  <div id="Widersprueche">
+   <button type="button" onClick="loadWid();">Widersprüche neuladen</button>
+   <table id="widerTable">
+    <tr><th>ID</th><th>MatrikelNr</th><th>Name</th><th>Geburtsdatum</th><th>Fakultät</th><th>Studiengang</th></tr>
+   </table>
+   <div id="wDialog" title="Aktion auswählen">
+    Bitte wähle die Aktion für <span id="wDialogName"></span> (<span id="wDialogMtknr"></span>) aus:
+    <form name="faktion" action="#"><select id="wDialogAction" name="aktion" size="1"><option selected>----</option><option value="accept">Zulassen</option><option value="deny">Nicht zulassen</option></select></form><br/>
+    <button type="button" onClick="handleDialogSave();">Speichern</button>
+    <span id="wDialogId" style="display:none;"></span>
+   </div>
+  </div>
+  <div id="Wahlbeteiligung">
+   <button type="button" onClick="loadBet();">Wahlbeteiligung neuladen</button>
+   <table border="0" id="beteilTable">
+   <tr><th>Fakultät</th><th>Stimmen</th><th>Stimmberechtigte</th><th>Anteil</th></tr>
+   <tr class="dataRow"><td rowspan="4">Keine Einträge</td></tr>
+   </table>
+   <table border="0" id="beteilTable2">
+   <tr><th>Gremium</th><th>Stimmen</th></tr>
+   <tr class="dataRow"><td rowspan="4">Keine Einträge</td></tr>
+   </table>
+  </div>
+ </body>
+</html>

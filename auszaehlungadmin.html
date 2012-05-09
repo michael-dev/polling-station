@@ -1,0 +1,230 @@
+<html>
+ <head>
+  <title>Administration Stimmauszählung</title>
+  <link type="text/css" href="css/smoothness/jquery-ui-1.8.12.custom.css" rel="stylesheet" />
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <script type="text/javascript" src="js/jquery-1.5.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery-ui-1.8.12.custom.min.js"></script>
+  <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
+  <script type="text/javascript">
+   $(function() {
+    
+    $( "#tabs" ).tabs({
+     show: function (event, ui) {
+      if (ui.panel.id == "Wahlen") {
+        loadWahl();
+       }
+      if (ui.panel.id == "Stapel") {
+        loadStapel();
+       }
+      if (ui.panel.id == "Ergebnis") {
+        loadErgebnis();
+       }
+      }
+     });
+    checkAuth();
+    $(document).everyTime("10s", function() { checkAuth(); });
+   });
+   /* header */
+   function checkAuth() {
+    $.post("action/checkauth.php").success(function(r) {
+       $('#loginbar').text('Sie sind als ' + r + ' authentifiziert.');
+       $('#loginbar').append('&nbsp;<a href="./action/relogin.php?nouser=' + escape(r) + '">Logout</a>');
+     } ).error(function() {
+       $('#loginbar').text('Sie sind nicht authentifiziert.');
+     });
+   }
+   /* Wahlen */
+   function loadWahl() {
+    wahlId = $('#mgmWahlSelect').val();
+    $('.wahlSelect option').remove();
+    $('#mgmWahlSelect').append(new Option('Neue Wahl','-1',true,true));
+    $('#stapelWahlSelect').append(new Option('alle','-1',true,true));
+    $('#ergWahlSelect').append(new Option('** Bitte auswählen **','-1',false,false));
+    $.post("action/wahl.php", {}, function(r, textStatus, jqXHR) {
+     jQuery.each(r, function(i, val) {
+      $('.wahlSelect').each( function(j, element) {
+       $(element).append(new Option(val.name, val.id,false,false));
+      });
+     });
+     $('#mgmWahlSelect').val(wahlId);
+     selectWahl('mgmWahlSelect');
+    }).error(function(r) { alert("Die Wahlen konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   var suppressSelectWahlRecursion = false;
+   function selectWahl(elementId) {
+    if (suppressSelectWahlRecursion) return;
+    suppressSelectWahlRecursion = true;
+    var wahlId = $('#'+elementId).val();
+    $('.wahlSelect').each(function(i, element) {
+     $(element).val(wahlId);
+    });
+    $('#wahlName').val($('#mgmWahlSelect option:selected').text());
+    loadKandidat(wahlId, '#WahlenKandidaten');
+    loadErgKandidat(wahlId, '#ErgWahlenKandidaten');
+    suppressSelectWahlRecursion = false;
+   }
+
+   function loadKandidat(wahlId, base) {
+    $(base + ' .Kandidat').remove();
+    $.post("action/kandidat.php", {wahl: wahlId}, function(r, textStatus, jqXHR) {
+     jQuery.each(r, function(i, val) {
+      var elem = $('<input type="text">');
+      elem.attr("class","Kandidat");
+      elem.attr("name","name[]");
+      elem.attr("value",val.name);
+      elem.appendTo($(base));
+     });
+     appendNewKandidat();
+    }).error(function(r) { alert("Die Kandidaten konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function appendNewKandidat() {
+    $('#WahlenKandidaten').append('<input class="Kandidat" name="name[]" onFocus="appendNewKandidat(); $(this).removeAttr(\'onFocus\');">');
+   }
+
+   function saveWahl() {
+    var kandidaten = Array();
+    jQuery.each($('#WahlenKandidaten .Kandidat'), function(i, elem) {
+     if ($(elem).val() != "") {
+      kandidaten.push($(elem).val());
+     }
+    });
+    $.post("action/savewahl.php", {wahl: $('#mgmWahlSelect').val(), name: $('#wahlName').val(), kandidaten: kandidaten}, function(r, textStatus, jqXHR) {
+     alert("Die Wahl wurde erfolgreich gespeichert.");
+     loadWahl();
+    }).error(function(r) { alert("Die Wahl konnte nicht gespeichert werden.\n"+r.responseText); });
+   }
+
+   function deleteWahl() {
+    var id = $('#mgmWahlSelect').val();
+    if (id == "" || id == -1) {
+     alert("Nur gespeicherte Wahlen können gelöscht werden.");
+     return;
+    }
+    $.post("action/deletewahl.php", {wahl: id}, function(r, textStatus, jqXHR) {
+     alert("Die Wahl wurde erfolgreich gelöscht.");
+     loadWahl();
+    }).error(function(r) { alert("Die Wahl konnte nicht gelöscht werden.\n"+r.responseText); });
+   }
+
+   /* Stapel */
+   function loadStapel() {
+     $('#stapelTable tr.dataRow').remove();
+     $.post("action/allstapel.php", {wahlId: $('#stapelWahlSelect').val(), filter:$('#filterMaxVerify').val()}, function(r, textStatus, jqXHR) {
+        jQuery.each(r, function(i, val) {
+          if (parseInt(val.numBallot) == 0) {
+            val.minVerify = "n/a";
+          }
+          $('#stapelTable tr:last').after('<tr class="dataRow" onClick="handleStapel('+val.wahl+','+val.id+','+val.numVotes+');"><td>'+val.wahlname+'</td><td>'+val.wahl+"/"+val.id+'</td><td>'+val.numVotes+'</td><td>'+val.numBallot+'</td><td>'+val.minVerify+'</td></tr>');
+        });
+        if (r.length == 0) {
+         alert("Es liegen keine Stapel vor.");
+        }
+     }).error(function(r) { alert("Die Stapel konnten nicht geladen werden.\n"+r.responseText); });
+     loadWahl();
+   }
+
+   function handleStapel(wahl, id, numVotes) {
+     if (confirm("Stapel "+wahl+"/"+id+" löschen?")) {
+       $.post("action/deletestapel.php", {wahl: wahl, id: id}).success(function() {
+        alert("Der Stapel wurde gelöscht.");
+        loadStapel();
+       }).error(function(r) {
+        alert("Der Stapel konnte nicht entfernt werden.\n"+r.responseText);
+       });
+     } else {
+       var newNumVotes = prompt("Geben sie bitte die neue Stimmanzahl für Stapel "+wahl+"/"+id+" ein.", numVotes);
+       if (newNumVotes != null) {
+        $.post("action/updatestapel.php", {wahl: wahl, id: id, numVotes: newNumVotes}).success(function() {
+         alert("Der Stapel wurde aktualisiert.");
+         loadStapel();
+        }).error(function(r) {
+         alert("Der Stapel konnte nicht aktualisiert werden.\n"+r.responseText);
+        });
+       }
+     }
+   }
+
+   /* Ergebnis */
+   function loadErgebnis() {
+    loadWahl();
+   }
+
+   function loadErgKandidat(wahlId, base) {
+    $(base+' tr.dataRow').remove();
+    $.post("action/statwahl.php", {wahl: wahlId}, function(r, textStatus, jqXHR) {
+     jQuery.each(r, function(i, val) {
+      $(base+' tr:last').after('<tr class="dataRow"><td>'+val.kandidatname+'</td><td>'+val.numVotes+'</td></tr>');
+     });
+    }).error(function(r) { alert("Die Ergebnisse konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function ergWahlPDF() {
+    var wahlId = $('#ergWahlSelect').val();
+    self.location.href="action/statwahlpdf.php?wahl="+wahlId+"&nonce="+(new Date()).getTime();
+   }
+   /* Nutzerverwaltung */
+   function saveUser() {
+    var data = {name: $('#username').val(),
+                pass: $('#password').val()};
+    $.post("action/nutzeranlegenauszaehlung.php",data).success(function() { alert("Der Nutzer "+$('#username').val()+" wurde erstellt."); $('#username').val(""); $('#password').val("");}).error(function(r) { alert("Der Nutzer wurde nicht angelegt.\n"+r.responseText); });
+   }
+  </script>
+  <style type="text/css">
+    #tabs > div { min-height: 600px; }
+    #Wahlen input.Kandidat { display: block; }
+    #stapelTable { text-align: center; }
+    #stapelTable tr:nth-child(odd)    { background-color:#eee; }
+    #stapelTable tr:nth-child(even)   { background-color:#fff; }
+    #stapelTable tr:hover             { background-color:#ccc; }
+  </style>
+ </head>
+ <body>
+  <div id="loginbar">&nbsp;</div>
+  <div id="tabs">
+   <ul>
+    <li><a href="#Benutzer"><span>Wahlhelfer anlegen</span></a></li>
+    <li><a href="#Wahlen"><span>Wahlen verwalten</span></a></li>
+    <li><a href="#Stapel"><span>Stapel verwalten</span></a></li>
+    <li><a href="#Ergebnis"><span>Wahlergebnis anzeigen</span></a></li>
+   </ul>
+  <div id="Benutzer">
+   <table border="0" style="width: 100%;">
+    <tr>
+     <th>Name</th>
+     <td><input type="text" name="name" id="username"/></td>
+    </tr>
+    <tr>
+     <th>Passwort</th>
+     <td><input type="password" name="password" id="password"/></td>
+    </tr>
+    <tr>
+     <td colspan="2"><button type="button" onClick="saveUser();" accesskey="s"><u>S</u>peichern</button></td>
+    </tr>
+   </table>
+  </div>
+  <div id="Wahlen">
+   <form onSubmit="return false;"><select id="mgmWahlSelect" class="wahlSelect" onChange="selectWahl('mgmWahlSelect');"></select> <input type="text" name="wahlname" id="wahlName"/></form>
+   <div id="WahlenKandidaten"></div>
+   <button onClick="saveWahl();">Speichern</button> <button onClick="deleteWahl();">Löschen</button>
+  </div>
+  <div id="Stapel">
+   <form onSubmit="return false;">
+   <button onClick="loadStapel()">Stapel neuladen</button>
+   Filter: Wahl = <select id="stapelWahlSelect" class="wahlSelect" onChange="selectWahl('stapelWahlSelect');"></select>, Überprüfungen &le;<input type="text" name="filterMaxVerify" id="filterMaxVerify" value="-1" style="width: 50px;" title="-1 für beliebig"/>
+   </form>
+   <table border="0" id="stapelTable">
+   <tr><th>Wahl</th><th>Stapel-Nr</th><th>Anzahl der Stimmen<br/>(SOLL je Zettel)</th><th>Anzahl der Stimmzettel</th><th>Anzahl der Überprüfungen</th></tr>
+   </table>
+  </div>
+  <div id="Ergebnis">
+   <form onSubmit="return false;"><select id="ergWahlSelect" class="wahlSelect" onChange="selectWahl('ergWahlSelect');"></select></form>
+   <table id="ErgWahlenKandidaten" border="0">
+    <tr><th>Kandidat</th><th>Anzahl der Stimmen</th></tr>
+   </table>
+   <button onClick="ergWahlPDF();">PDF</button>
+  </div>
+ </body>
+</html>

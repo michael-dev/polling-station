@@ -1,0 +1,119 @@
+<html>
+ <head>
+  <title>Administration Stimmabgabe</title>
+  <link type="text/css" href="css/smoothness/jquery-ui-1.8.12.custom.css" rel="stylesheet" />
+  <link type="text/css" href="css/jquery.fileupload-ui.css" rel="stylesheet" />
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+  <script type="text/javascript" src="js/jquery-1.5.1.min.js"></script>
+  <script type="text/javascript" src="js/jquery-ui-1.8.12.custom.min.js"></script>
+  <script type="text/javascript" src="js/jquery.ui.datepicker-de.js"></script>
+  <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
+  <script type="text/javascript" src="js/jquery.fileupload.js"></script>
+  <script type="text/javascript" src="js/jquery.fileupload-ui.js"></script>
+  <script type="text/javascript">
+   $(function() {
+    $( "#tabs" ).tabs();
+    checkAuth();
+    $(document).everyTime("10s", function() { checkAuth(); });
+    loadBet();
+   });
+   /* header */
+   function checkAuth() {
+    $.post("action/checkauth.php").success(function(r) {
+       $('#loginbar').text('Sie sind als ' + r + ' authentifiziert.');
+       $('#loginbar').append('&nbsp;<a href="./action/relogin.php?nouser=' + escape(r) + '">Logout</a>');
+     } ).error(function() {
+       $('#loginbar').text('Sie sind nicht authentifiziert.');
+     });
+   }
+  /** Wahlbeteiligung */
+  function loadBet() {
+     $('#beteilTable tr.dataRow').remove();
+     $('#beteilTable2 tr.dataRow').remove();
+     $.post("action/wahlbeteiligungabgabe.php", {}, function(r, textStatus, jqXHR) {
+        /* Aufschlüsselung nach Fakultäten */
+        var sumGesamt = 0;
+        var sumAbgegeben = 0;
+        jQuery.each(r.overview, function(i, val) {
+          var anteil;
+          if (val.gesamt > 0) {
+            anteil = Math.round(val.abgegeben / val.gesamt * 100) + "%";
+          } else {
+            anteil = "n/a";
+          }
+          sumGesamt += parseInt(val.gesamt);
+          sumAbgegeben += parseInt(val.abgegeben);
+          $('#beteilTable tr:last').after('<tr class="dataRow"><td>'+val.name+'</td><td align="center">'+val.abgegeben+'</td><td align="center">'+val.gesamt+'</td><td align="right">'+anteil+'</td></tr>');
+        });
+        if (r.overview.length == 0) {
+          $('#beteilTable tr:last').after('<tr class="dataRow"><td colspan="4">Keine Daten</td></tr>');
+        } else {
+         var sumAnteil;
+         if (sumGesamt > 0) {
+           sumAnteil = Math.round(sumAbgegeben / sumGesamt * 100) + "%";
+         } else {
+           sumAnteil = "n/a";
+         }
+         $('#beteilTable tr:last').after('<tr class="dataRow"><th>Gesamt</th><th>'+sumAbgegeben+'</th><th>'+sumGesamt+'</th><th align="right">'+sumAnteil+'</th></tr>');
+        }
+        /* Aufschlüsselung nach Gremien */
+        var sumAusgegeben = 0;
+        jQuery.each(r.detail, function(i, val) {
+          sumAusgegeben += parseInt(val.ausgegeben);
+          var zettel = val.zettel;
+          if (zettel.substr(0,6) == "fakrat") {
+           zettel = "Fakultätsrat " + zettel.substr(6);
+          } else if (zettel.substr(0,3) == "fsr") {
+           zettel = "Fachschaftsrat " + zettel.substr(3);
+          } else switch (zettel) {
+           case "stura":
+            zettel = "StuRa";
+            break;
+           case "glsr":
+            zettel = "Gleichstellungsrat";
+            break;
+           case "instwk":
+            zettel = "Institutsrat Werkstoffwissenschaften";
+            break;
+           case "instpk":
+            zettel = "Insitutsrat Physik";
+            break;
+           case "belega":
+            zettel = "Belegungsausschuss";
+            break;
+           default:
+            break;
+          }
+          $('#beteilTable2 tr:last').after('<tr class="dataRow"><td>'+zettel+'</td><td align="center">'+val.ausgegeben+'</td></tr>');
+        });
+        if (r.detail.length == 0) {
+          $('#beteilTable2 tr:last').after('<tr class="dataRow"><td colspan="2">Keine Daten</td></tr>');
+        } else {
+         $('#beteilTable2 tr:last').after('<tr class="dataRow"><th>Gesamt</th><th>'+sumAusgegeben+'</th></tr>');
+        }
+     }).error(function(r) { alert("Die Wahlbeteiligung konnte nicht geladen werden.\n"+r.responseText); });
+  }
+  </script>
+  <style type="text/css">
+    #tabs > div { min-height: 600px; }
+  </style>
+ </head>
+ <body>
+  <div id="loginbar">&nbsp;</div>
+  <div id="tabs">
+   <ul>
+    <li><a href="#Wahlbeteiligung"><span>Wahlbeteiligung (bei Abgabe)</span></a></li>
+   </ul>
+  <div id="Wahlbeteiligung">
+   <button type="button" onClick="loadBet();">Wahlbeteiligung neuladen</button>
+   <table border="0" id="beteilTable">
+   <tr><th>Fakultät</th><th>Stimmen</th><th>Stimmberechtigte</th><th>Anteil</th></tr>
+   <tr class="dataRow"><td rowspan="4">Keine Einträge</td></tr>
+   </table>
+   <table border="0" id="beteilTable2">
+   <tr><th>Gremium</th><th>Stimmen</th></tr>
+   <tr class="dataRow"><td rowspan="4">Keine Einträge</td></tr>
+   </table>
+  </div>
+ </body>
+</html>

@@ -1,0 +1,37 @@
+Die Software dient der ordnungsgemäßen Durchführung der Wahl der Studierendenschaft im Jahre 2011.
+Sie erlaubt dazu, die Wahlberechtigung zu prüfen und eine mehrfache Wahrnehmung des Wahlrechts zu verhindern.
+Weiterhin unterstützt sie den Wahlleiter, indem Fehler im Wählerverzeichnis (Widersprüche) erfasst und gesammelt verarbeitet werden können.
+Außerdem kann sie für die Auszählung der Stimmzettel verwendet werden.
+
+Aufbau
+------
+
+[WebBrowser] <=> [WebServer] <=> [DB]
+
+DB: Speicherung von Stimmberechtigten, Fakultäten und abgegebenen Stimmen.
+WebServer: Speicherung von statischen Inhalten und Vermittelung zwischen DB und Webbrowser.
+WebBrowser: Anwendungslogik im Javascript, Datenzugriff mittels Ajax
+
+Das Login der Datenbank wird mittels HTTP Basic Auth abgefragt.
+Die Rechte können graduell gestaffelt werden, so muss ein Wahlhelfer zwar fast alle Informationen lesen, aber nur Stimmen und Widersprüche speichern können. D.h. er braucht beim Insert
+keinen Zugriff auf die Zeitstempel und Nachweisspalten der Stimmen-Tabelle und keinen Zugriff auf die freigabe-Spalte der passiven Wähler. Ein Wert von 0 in dieser Spalte bedeutet, dass der Nutzer nicht wählen darf.
+Ob der Nutzer angemeldet ist, wird regelmäßig beim Server erfragt (Polling).
+
+FAQ
+---
+
+1. Wie ändere ich die Stimmzettelreihenfolge und ihre Farben?
+-------------------------------------------------------------
+
+Dies ist in der index.html vermerkt. Etwa bei Zeile 280 findet sich für jeden Stimmzettel ein div-Block. Die Reihenfolge dieser Blöcke ist vertauschbar und ihre Farbe sowie der Text dort veränderbar.
+Die Vergabebedingungen sind in der Funktion jetztAbstimmen() geregelt.
+
+2. Wie installiere ich die Anwendung?
+--------------------------------------
+
+Es wird ein Webserver mit PHP 5.0+ und Mysql 5.1+ benötigt. Das Datenbankschema liegt in der wahlen2011.sql vor, Nutzer für die Stimmzettelausgabe mit einfacheren Rechten können ggf. über die Webmaske (admin.html) erstellt werden.
+Der Datenbankserver und der Datenbankname wird in der config.php vermerkt, das Realm in dieser Datei wird beim Login angezeigt und hat sonst keine weitere Bedeutung.
+Das tmp Verzeichnis wird nur für den Import des Wählerverzeichnisses für die Anwendung schreibbar benötigt.
+
+
+
