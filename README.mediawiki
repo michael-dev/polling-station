@@ -1,0 +1,44 @@
+= Elektronisches Wahllokal =
+
+== Was ist das elektronische Wahllokal? ==
+Diese Webanwendung implementiert ein elektronisches Wählerverzeichnis. Es erlaubt damit die parallele Ausgabe von Stimmzetteln, ohne die Wähler vorher in entsprechende Gruppen einzuteilen. Weiterhin unterstützt die Anwendung die computergestützte Auszählung der Stimmzettel.
+
+== Was tut das Tool nicht? ==
+Diese Anwendung unterstützt nicht die elektronische Stimmabgabe oder vollautomatische Auszählung der Stimmzettel.
+
+== Anleitung ==
+
+# Installieren Sie PHP mit mysql, json und iconv Unterstützung sowie MySQL und einen angebundenen Webserver.
+# Passen sie lib/config.php an ihre Bedürfnisse an.
+# Öffnen sie die passende Webseite (index.html oder admin.html).
+
+== Fehler gefunden? ==
+
+Dann schreiben Sie bitte an michael-dev@fami-braun.de .
+
+== Status ==
+
+Patches werden gerne gesehen, Weiterentwicklung findet momentan nicht statt.
+
+= Electonic polling station =
+
+== About the web application ==
+
+This application implements an electronic electoral register. It can be used to support parallel handout of ballots without prior grouping of the voters. Futher it supports computer assisted counting of the votes.
+
+== Things the application does not do ==
+
+The application does not support fully automatic scanning of votes or electronic voting.
+
+== Instructions ==
+
+# Install php with mysql, iconv and json support as well as a mysql and a web server.
+# Edit lib/config.php to match your needs.
+# Visit index.html and/or admin.html.
+
+== Troubleshooting ==
+
+If you found a bug, please send a mail to michael-dev@fami-braun.de .
+
+== Status ==
+I welcome patches but am lacking the time for writing them on my own.
