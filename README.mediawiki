@@ -9,7 +9,7 @@ Diese Anwendung unterstützt nicht die elektronische Stimmabgabe oder vollautoma
 == Anleitung ==
 
 # Installieren Sie PHP mit mysql, json und iconv Unterstützung sowie MySQL und einen angebundenen Webserver.
-# Passen sie lib/config.php an ihre Bedürfnisse an.
+# Passen sie lib/config.php und lib/config.ini an ihre Bedürfnisse an.
 # Öffnen sie die passende Webseite (index.html oder admin.html).
 
 == Fehler gefunden? ==
@@ -33,7 +33,7 @@ The application does not support fully automatic scanning of votes or electronic
 == Instructions ==
 
 # Install php with mysql, iconv and json support as well as a mysql and a web server.
-# Edit lib/config.php to match your needs.
+# Edit lib/config.php and lib/config.ini to match your needs.
 # Visit index.html and/or admin.html.
 
 == Troubleshooting ==
