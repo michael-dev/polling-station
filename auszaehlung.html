@@ -50,6 +50,7 @@
       return isValid;
      },
      show: function (event, ui) {
+      $('input.fastAction').attr("checked", false);
       if (ui.panel.id == "Stapel") {
        loadWahl();
       }
@@ -96,6 +97,7 @@
         nr -= 1;
         var checked = $('input.Kandidat'+nr).is(":checked");
         $('input.Kandidat'+nr).attr("checked", ! checked);
+        $('input.Kandidat'+nr).trigger("change");
         lastChar = null;
        } else {
         lastChar = parseInt(keyChar);
@@ -222,7 +224,21 @@
        txt.appendTo($(ediv));
       });
      });
+     $('#Erfassen .Kandidaten input').attr('onChange','onChangeCreate()');
+     $('#Ueberpruefen .Kandidaten input').attr('onChange','onChangeVerify()');
     }).error(function(r) { alert("Die Kandidaten konnten nicht geladen werden.\n"+r.responseText); });
+   }
+
+   function onChangeCreate() {
+     if ($('#fastCreate:checked').length > 0) {
+       saveBallot();
+     }
+   }
+
+   function onChangeVerify() {
+     if ($('#fastVerify:checked').length > 0) {
+       nextVerify(true);
+     }
    }
 
    /** Stimmzettel erfassen */
@@ -270,7 +286,9 @@
     $.post("action/saveballot.php",{"wahl":wahlId, "stapel": stapelId, "id":currentBallotId, "votes":votes, "session":sessionId, "invalid":invalid ? 1 : 0}).success(function(r) {
       if (r.status == "OK") {
         currentStapelBallotCounter = currentStapelBallotCounter + 1;
-        alert("Bitte notieren: Stimmzettelnummer "+wahlId+"/"+currentBallotId);
+        if ($('#fastCreate:checked').length < 1) {
+          alert("Bitte notieren: Stimmzettelnummer "+wahlId+"/"+currentBallotId);
+        }
         $('.Kandidat input').attr("checked", false);
         // increment id
         currentBallotId++;
@@ -449,6 +467,9 @@
     <br/>
     <span>Nummer des Stimmzettels:</span>
     <span id="nextFreeBallotId" onClick="return changeBallotId();"></span>
+    <br/>
+    <span>Speichern bei erstem Kreuz:</span>
+    <input type="checkbox" id="fastCreate" class="fastAction"/>
    </form>
    <div class="Kandidaten">
    </div>
@@ -469,6 +490,9 @@
     <br/>
     <span>Maximale Anzahl an Überprüfungen (Filter):</span>
     <span id="maxVoteCheckCount" onClick="return changeMaxVoteCheckCount();"></span>
+    <br/>
+    <span>Speichern bei erstem Kreuz:</span>
+    <input type="checkbox" id="fastVerify" class="fastAction"/>
    </form>
    <div class="Kandidaten">
    </div>

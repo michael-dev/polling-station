@@ -10,9 +10,11 @@
   <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
   <script type="text/javascript" src="js/jquery.fileupload.js"></script>
   <script type="text/javascript" src="js/jquery.fileupload-ui.js"></script>
+  <script type="text/javascript" src="js/zettelconfigparser.js"></script>
   <script type="text/javascript">
    $(function() {
     $( "#tabs" ).tabs();
+    zettelconfiginit();
     checkAuth();
     $(document).everyTime("10s", function() { checkAuth(); });
     loadBet();
@@ -61,28 +63,8 @@
         jQuery.each(r.detail, function(i, val) {
           sumAusgegeben += parseInt(val.ausgegeben);
           var zettel = val.zettel;
-          if (zettel.substr(0,6) == "fakrat") {
-           zettel = "Fakultätsrat " + zettel.substr(6);
-          } else if (zettel.substr(0,3) == "fsr") {
-           zettel = "Fachschaftsrat " + zettel.substr(3);
-          } else switch (zettel) {
-           case "stura":
-            zettel = "StuRa";
-            break;
-           case "glsr":
-            zettel = "Gleichstellungsrat";
-            break;
-           case "instwk":
-            zettel = "Institutsrat Werkstoffwissenschaften";
-            break;
-           case "instpk":
-            zettel = "Insitutsrat Physik";
-            break;
-           case "belega":
-            zettel = "Belegungsausschuss";
-            break;
-           default:
-            break;
+          if (zettelconfig[val.zettel]) {
+            zettel = zettelconfig[val.zettel].name;
           }
           $('#beteilTable2 tr:last').after('<tr class="dataRow"><td>'+zettel+'</td><td align="center">'+val.ausgegeben+'</td></tr>');
         });

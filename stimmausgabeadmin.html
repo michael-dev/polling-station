@@ -10,6 +10,7 @@
   <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
   <script type="text/javascript" src="js/jquery.fileupload.js"></script>
   <script type="text/javascript" src="js/jquery.fileupload-ui.js"></script>
+  <script type="text/javascript" src="js/zettelconfigparser.js"></script>
   <script type="text/javascript">
    $(function() {
     $( "#tabs" ).tabs({
@@ -23,9 +24,28 @@
        }
       }
      });
+    zettelconfiginit();
     checkAuth();
     $(document).everyTime("10s", function() { checkAuth(); });
-   });
+    $('#file_upload').fileUploadUI({
+        uploadTable: $('#files'),
+        buildUploadRow: function (files, index, handler) {
+            return $('<tr><td>' + files[index].name + '<\/td>' +
+                    '<td class="file_upload_progress"><div><\/div><\/td>' +
+                    '<td class="file_upload_cancel">' +
+                    '<button class="ui-state-default ui-corner-all" title="Abbruch">' +
+                    '<span class="ui-icon ui-icon-cancel">Abbruch<\/span>' +
+                    '<\/button><\/td><\/tr>');
+        },
+        buildDownloadRow: function (file, handler) {
+            return $('<tr><td>' + file.name + '<\/td><\/tr>');
+        },
+        onError: function (event, files, index, xhr, handler) {
+            alert('Es ist ein Fehler aufgetreten.\n' + xhr.responseText);
+       }
+    });
+	  $( "#wDialog" ).dialog({ autoOpen: false, modal: true });
+  });
    /* header */
    function checkAuth() {
     $.post("action/checkauth.php").success(function(r) {
@@ -66,28 +86,6 @@
                 action: $("#wDialogAction" ).val()};
     $.post("action/removewiderspruch.php",data).success(function() {loadWid(); }).error(function(r) { alert("Es ist ein Fehler aufgetreten.\n"+r.responseText); });
   }
-  $(function () {
-    $('#file_upload').fileUploadUI({
-        uploadTable: $('#files'),
-        buildUploadRow: function (files, index, handler) {
-            return $('<tr><td>' + files[index].name + '<\/td>' +
-                    '<td class="file_upload_progress"><div><\/div><\/td>' +
-                    '<td class="file_upload_cancel">' +
-                    '<button class="ui-state-default ui-corner-all" title="Abbruch">' +
-                    '<span class="ui-icon ui-icon-cancel">Abbruch<\/span>' +
-                    '<\/button><\/td><\/tr>');
-        },
-        buildDownloadRow: function (file, handler) {
-            return $('<tr><td>' + file.name + '<\/td><\/tr>');
-        },
-        onError: function (event, files, index, xhr, handler) {
-            alert('Es ist ein Fehler aufgetreten.\n' + xhr.responseText);
-       }
-    });
-    $(function() {
-		 $( "#wDialog" ).dialog({ autoOpen: false, modal: true });
-	  });
-  });
   /** Wahlbeteiligung */
   function loadBet() {
      $('#beteilTable tr.dataRow').remove();
@@ -123,28 +121,8 @@
         jQuery.each(r.detail, function(i, val) {
           sumAusgegeben += parseInt(val.ausgegeben);
           var zettel = val.zettel;
-          if (zettel.substr(0,6) == "fakrat") {
-           zettel = "Fakultätsrat " + zettel.substr(6);
-          } else if (zettel.substr(0,3) == "fsr") {
-           zettel = "Fachschaftsrat " + zettel.substr(3);
-          } else switch (zettel) {
-           case "stura":
-            zettel = "StuRa";
-            break;
-           case "glsr":
-            zettel = "Gleichstellungsrat";
-            break;
-           case "instwk":
-            zettel = "Institutsrat Werkstoffwissenschaften";
-            break;
-           case "instpk":
-            zettel = "Insitutsrat Physik";
-            break;
-           case "belega":
-            zettel = "Belegungsausschuss";
-            break;
-           default:
-            break;
+          if (zettelconfig[val.zettel]) {
+            zettel = zettelconfig[val.zettel].name;
           }
           $('#beteilTable2 tr:last').after('<tr class="dataRow"><td>'+zettel+'</td><td align="center">'+val.ausgegeben+'</td></tr>');
         });

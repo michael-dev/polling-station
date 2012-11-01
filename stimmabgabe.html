@@ -33,10 +33,10 @@
       var hasAny = false;
       jQuery.each(r, function(i, val) {
         hasAny = true;
-        $('#pendingVotesTable tr:last').after('<tr class="dataRow" onClick="selectPerson('+val.id+',\''+val.name+'\');"><td>'+val.name+'</td><td>'+val.zettel+'</td><td>'+val.zeitpunkt+'</td></tr>');
+        $('#pendingVotesTable tr:last').after('<tr class="dataRow" onClick="selectPerson('+val.id+',\''+val.name.replace('\'','\\\'')+'\');"><td>'+val.name+'</td><td>'+val.zettel+'</td><td>'+val.zeitpunkt+'</td></tr>');
        if (parseInt(val.recent) == 1) {
           hasRecent = true;
-          $('#pendingVotesTableShort tr:last').after('<tr class="dataRow" onClick="selectPerson('+val.id+',\''+val.name+'\');"><td>'+val.name+'</td><td>'+val.zettel+'</td><td>'+val.zeitpunkt+'</td></tr>');
+          $('#pendingVotesTableShort tr:last').after('<tr class="dataRow" onClick="selectPerson('+val.id+',\''+val.name.replace('\'','\\\'')+'\');"><td>'+val.name+'</td><td>'+val.zettel+'</td><td>'+val.zeitpunkt+'</td></tr>');
         }
       });
       if (hasAny === false) {

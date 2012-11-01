@@ -7,16 +7,19 @@
   <script type="text/javascript" src="js/jquery-ui-1.8.12.custom.min.js"></script>
   <script type="text/javascript" src="js/jquery.ui.datepicker-de.js"></script>
   <script type="text/javascript" src="js/jquery.timers-1.2.js"></script>
+  <script type="text/javascript" src="js/zettelconfigparser.js"></script>
   <script type="text/javascript">
+   var questions = {};
+   var currentQuestion = null;
    $(function() {
     $("#suchtext").autocomplete({source: "action/autocomplete.php"});
     $("#wStudiengang").autocomplete({source: "action/studiengang.php"});
     $("#wFak").autocomplete({source: "action/fakultaet.php"});
     $.datepicker.setDefaults($.datepicker.regional['de']);
     $("#wGeburtsdatum").datepicker({dateFormat: 'yy-mm-dd'});
-    $("#studentenwerkDialog").dialog({ autoOpen: false, modal: true, minWidth: 600,
-                                       close: function(event, ui) { return onStudentenwerkDialogClose(); },
-                                       open: function(event, ui) { return onStudentenwerkDialogOpen(); } });
+    $("#askDialog").dialog({ autoOpen: false, modal: true, minWidth: 600,
+                                       close: function(event, ui) { return onAskDialogClose(); },
+                                       open: function(event, ui) { return onAskDialogOpen(); } });
     $( "#tabs" ).tabs({
      show: function (event, ui) {
       $('#suchtext').autocomplete( "close" );
@@ -29,6 +32,12 @@
       }
      }
     });
+    zettelconfiginit();
+    for (var k in zettelconfig) {
+      var div = $('<div/>', {'text': zettelconfig[k].name});
+      if (zettelconfig[k].color) { div.css('background-color', '#'+zettelconfig[k].color); }
+      div.attr("id",k).addClass("zettel").appendTo("#zettel");
+    }
     ausgabeBereinigen();
     checkAuth();
     $(document).everyTime("10s", function() { checkAuth(); });
@@ -87,7 +96,7 @@
      $('.verifyGeburtsdatum').text(r.geburtsdatum);
      $('.verifyFak').text(r.fak);
      $('.verifyStud').text(r.stud);
-     $('.verifyWohnheim').text("");
+     $('.verifyAsk').text("");
      var msg = "Die Abstimung ist möglich.";
      var flag = 0;
      if (r.registriert == 0) {
@@ -108,35 +117,82 @@
        $('#verifyOkButton').attr('disabled','disabled');
        $('.verifyStatus').addClass("verifyDenied");
      } else {
-      $("#studentenwerkDialog").dialog('open');
+       startQuestions();
      }
     }).error(function(r) {
      alert("Der Aufruf ist fehlgeschlagen.\n"+r.responseText);
      $( "#tabs").tabs('select', '#Suchen');
     });
    }
-   var dialogIntededToClose;
-   function onStudentenwerkDialogOpen() {
-    dialogIntededToClose = false;
+   function startQuestions() {
+    questions = {};
+    currentQuestion = null;
+    for (var k in zettelconfig) {
+      var selector = true;
+      if (zettelconfig[k]['fak']) {
+        fak = $('#verifyFAKID').text().toLowerCase();
+        selector = selector && ($.inArray(fak, zettelconfig[k]['fak']) >= 0);
+      }
+      if (zettelconfig[k]['stud']) {
+        stud = $('#verifyStud').text().toLowerCase();
+        selector = selector && ($.inArray(fak, zettelconfig[k]['stud']) >= 0);
+      }
+      if (selector && zettelconfig[k]['ask']) {
+        questions[k] = zettelconfig[k];
+        if (Object.prototype.hasOwnProperty.call(questions[k], 'reply')) {
+          delete questions[k].reply;
+        }
+      }
+    }
+    nextQuestion();
    }
-   function onStudentenwerkDialogClose() {
-    if (!dialogIntededToClose) {
+   var dialogIntendedToClose;
+   function nextQuestion() {
+     var question = null;
+     for (var k in questions) {
+       if (!Object.prototype.hasOwnProperty.call(questions[k], 'reply')) {
+         question = questions[k];
+         currentQuestion = k;
+         break;
+       }
+     }
+     if (question == null) {
+       dialogIntendedToClose = true;
+       $("#askDialog").dialog('close');
+       $('#verifyOkButton').removeAttr('disabled');
+       $('.verifyStatus').addClass("verifyPassed");
+       /* quick&dirty fix to skip over to Ausgabe tab */
+       jetztAbstimmen();
+       return;
+     }
+     $('#askDialog').attr('title',question.titel);
+     var text = question.ask.replace(/%name%/g, $('#verifyName').text());
+     $('#askDialogContent').text(text);
+     $('#askDialogOk').text(question.ok);
+     $('#askDialogCancel').text(question.abort);
+     $("#askDialog").dialog('open');
+     dialogIntendedToClose = false;
+   }
+   function onAskDialogOpen() {
+   }
+   function onAskDialogClose() {
+    if (!dialogIntendedToClose) {
      // default ESC=no
-     onStudentenwerkEntscheidung(false);
+     onAskEntscheidung(false);
     }
    }
-   function onStudentenwerkEntscheidung(imStudentenwerk) {
-     dialogIntededToClose = true;
-     $("#studentenwerkDialog").dialog('close');
-     if (imStudentenwerk) {
-       $('.verifyWohnheim').text("Ja");
+   function onAskEntscheidung(askReply) {
+     if (currentQuestion == null) { return; }
+     questions[currentQuestion].reply = askReply;
+     var disptext = $('#verifyAsk').text();
+     if (disptext != '') { disptext += ', '; }
+     if (askReply) {
+       disptext += $('#askDialogOk').text();
      } else {
-       $('.verifyWohnheim').text("Nein");
+       disptext += $('#askDialogCancel').text();
      }
-     $('#verifyOkButton').removeAttr('disabled');
-     $('.verifyStatus').addClass("verifyPassed");
-     /* quick&dirty fix to skip over to Ausgabe tab */
-     jetztAbstimmen();
+     $('.verifyAsk').text(disptext);
+     nextQuestion();
    }
    /* Abstimmen */
    function clearAbstimmen() {
@@ -158,27 +214,22 @@
     $( "#tabs").tabs( "option", "disabled", [0,1,2,4] );
 
     /** LOGIK FÜR STIMMZETTEL **/
-    // 1. StuRa, GLSR: für alle Studierenden
-    $('#stura').attr('class','zettel');
-    $('#glsr').attr('class','zettel');
-    // 2. FakRat+FSR für Fakultät
-    fak = $('#verifyFAKID').text().toUpperCase();
-    if (fak == "M") {
-      fak = "MB";
-    }
-    $('#fakrat'+fak).attr('class','zettel');
-    $('#fsr'+fak).attr('class','zettel');
-    // 3. Institutsrat Werkstoffwissenschaften für Werkstoffwissenschaftler
-    stud = $('#verifyStud').text();
-    if (stud == 'WSW') {
-      $('#instwk').attr('class','zettel');
-    }
-    if (stud == 'TPH') {
-      $('#instpk').attr('class','zettel');
-    }
-    // 4. BelegA
-    if ($('#verifyWohnheim').text() == 'Ja') {
-      $('#belega').attr('class','zettel');
+    for (var k in zettelconfig) {
+      var selector = true;
+      if (zettelconfig[k]['fak']) {
+        fak = $('#verifyFAKID').text().toLowerCase();
+        selector = selector && ($.inArray(fak, zettelconfig[k]['fak']) >= 0);
+      }
+      if (zettelconfig[k]['stud']) {
+        stud = $('#verifyStud').text().toLowerCase();
+        selector = selector && ($.inArray(fak, zettelconfig[k]['stud']) >= 0);
+      }
+      if (zettelconfig[k]['ask']) {
+        selector = selector && questions[k].reply;
+      }
+      if (selector) {
+        $('#'+k).attr('class','zettel');
+      }
     }
    }
    function ausgabeAbbruch() {
@@ -252,21 +303,6 @@
     .zetteldisabled { display:none; }
     .verifyPassed { background-color: green; display: block; }
     .verifyDenied { background-color: red; display: block; }
-    #fakratIA.zettel { background-color: #A2CD5A; }
-    #fakratEI.zettel { background-color: #ADD8E6; }
-    #fakratMB.zettel { background-color: #FF7F00; }
-    #fakratMN.zettel { background-color: #F08080; }
-    #fakratWW.zettel { background-color: #FFFAFA; }
-    #fsrIA.zettel { background-color: #00EE00; }
-    #fsrEI.zettel { background-color: #36648B; }
-    #fsrMB.zettel { background-color: #CD0000; }
-    #fsrMN.zettel { background-color: #DDA0DD; }
-    #fsrWW.zettel { background-color: #CDC0B0; }
-    #stura.zettel { background-color: #FFFF00; }
-    #glsr.zettel { background-color: #FF8C69; }
-    #instwk.zettel { background-color: #32CD32; }
-    #instpk.zettel { background-color: #BCD2EE; }
-    #belega.zettel { background-color: #FFFF00; }
   </style>
  </head>
  <body>
@@ -331,8 +367,8 @@
      <td class="emptible verifyStatus" id="verifyStatus"></td>
     </tr>
     <tr>
-     <th>Wohnheim</th>
-     <td class="emptible verifyWohnheim" id="verifyWohnheim"></td>
+     <th>Weitere Fragen</th>
+     <td class="emptible verifyAsk" id="verifyAsk"></td>
     </tr>
     <tr>
      <td><form><button type="button" onClick="jetztAbstimmen();" id="verifyOkButton" accesskey="w"><u>W</u>eiter</button></form></td>
@@ -363,30 +399,17 @@
      <td class="emptible verifyStatus"></td>
     </tr>
     <tr>
-     <th>Wohnheim</th>
-     <td class="emptible verifyWohnheim"></td>
+     <th>Weitere Fragen</th>
+     <td class="emptible verifyAsk"></td>
     </tr>
    </table>
-  <div id="fakratIA" class="zettel">Fakultätsrat IA</div>
-  <div id="fakratEI" class="zettel">Fakultätsrat EI</div>
-  <div id="fakratMB" class="zettel">Fakultätsrat MB</div>
-  <div id="fakratMN" class="zettel">Fakultätsrat MN</div>
-  <div id="fakratWW" class="zettel">Fakultätsrat WW</div>
-  <div id="fsrIA" class="zettel">Fachschaftsrat IA</div>
-  <div id="fsrEI" class="zettel">Fachschaftsrat EI</div>
-  <div id="fsrMB" class="zettel">Fachschaftsrat MB</div>
-  <div id="fsrMN" class="zettel">Fachschaftsrat MN</div>
-  <div id="fsrWW" class="zettel">Fachschaftsrat WW</div>
-  <div id="stura" class="zettel">Studierendenrat</div>
-  <div id="glsr"  class="zettel">Gleichstellungsrat</div>
-  <div id="instwk" class="zettel">Institutsrat Werkstoffwissenschaften</div>
-  <div id="instpk" class="zettel">Institutsrat Physik</div>
-  <div id="belega" class="zettel">Belegungsausschuss</div>
+  <span id="zettel">
+  </span>
   <div><form><button accesskey="w" type="button" id="ausgabeOkButton" onClick="ausgabeSpeichern()">Stimmzettel <u>w</u>urden ausgegeben</button> <button type="button" accesskey="a" onClick="ausgabeAbbruch();" id="ausgabeAbortButton">Ausgabe vollständig <u>a</u>bgebrochen.</button></form></div>
   </div>
-  <div id="studentenwerkDialog" title="Stimmberechtigung im Wohnheim prüfen">
-   Wohnt <span class="emptible verifyName" id="verifyNameDlg"></span> im Studentenwohnheim (Studentenwerk / Campus)? <br/>
-   <button onClick="onStudentenwerkEntscheidung(true);">Ja, wohnt im Wohnheim</button> <button onClick="onStudentenwerkEntscheidung(false);">Nein, wohnt extern</button>
+  <div id="askDialog" title="Stimmberechtigung im Wohnheim prüfen">
+   <span class="emptible" id="askDialogContent"></span><br/>
+   <button onClick="onAskEntscheidung(true);" id="askDialogOk">Ja, wohnt im Wohnheim</button> <button id="askDialogCancel" onClick="onAskEntscheidung(false);">Nein, wohnt extern</button>
   </div>
   <div id="Widerspruch">
   Dieses Formular wird benutzt, wenn der Studierende behauptet, wahlberechtigt zu sein, im System aber nicht bekannt ist.
