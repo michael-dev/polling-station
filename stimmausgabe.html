@@ -87,7 +87,7 @@
      $('.verifyGeburtsdatum').text(r.geburtsdatum);
      $('.verifyFak').text(r.fak);
      $('.verifyStud').text(r.stud);
-     $('.verifyWohnheim').text("");
+     //$('.verifyWohnheim').text("");
      var msg = "Die Abstimung ist möglich.";
      var flag = 0;
      if (r.registriert == 0) {
@@ -108,7 +108,13 @@
        $('#verifyOkButton').attr('disabled','disabled');
        $('.verifyStatus').addClass("verifyDenied");
      } else {
-      $("#studentenwerkDialog").dialog('open');
+     // $("#studentenwerkDialog").dialog('open');
+        /* StuWe Dialog übersprunge BEGIN */
+        $('#verifyOkButton').removeAttr('disabled');
+        $('.verifyStatus').addClass("verifyPassed");
+        /* quick&dirty fix to skip over to Ausgabe tab */
+        jetztAbstimmen();
+        /* StuWe Dialog übersprunge END */
      }
     }).error(function(r) {
      alert("Der Aufruf ist fehlgeschlagen.\n"+r.responseText);
@@ -160,6 +166,8 @@
     /** LOGIK FÜR STIMMZETTEL **/
     // 1. StuRa, GLSR: für alle Studierenden
     $('#stura').attr('class','zettel');
+    $('#ursatzung').attr('class','zettel');
+    $('#urfinanz').attr('class','zettel');
     $('#glsr').attr('class','zettel');
     // 2. FakRat+FSR für Fakultät
     fak = $('#verifyFAKID').text().toUpperCase();
@@ -177,9 +185,9 @@
       $('#instpk').attr('class','zettel');
     }
     // 4. BelegA
-    if ($('#verifyWohnheim').text() == 'Ja') {
-      $('#belega').attr('class','zettel');
-    }
+//    if ($('#verifyWohnheim').text() == 'Ja') {
+//      $('#belega').attr('class','zettel');
+//    }
    }
    function ausgabeAbbruch() {
     ausgabeBereinigen();
@@ -252,20 +260,22 @@
     .zetteldisabled { display:none; }
     .verifyPassed { background-color: green; display: block; }
     .verifyDenied { background-color: red; display: block; }
-    #fakratIA.zettel { background-color: #A2CD5A; }
-    #fakratEI.zettel { background-color: #ADD8E6; }
-    #fakratMB.zettel { background-color: #FF7F00; }
-    #fakratMN.zettel { background-color: #F08080; }
-    #fakratWW.zettel { background-color: #FFFAFA; }
-    #fsrIA.zettel { background-color: #00EE00; }
-    #fsrEI.zettel { background-color: #36648B; }
-    #fsrMB.zettel { background-color: #CD0000; }
-    #fsrMN.zettel { background-color: #DDA0DD; }
+    #fakratIA.zettel { background-color: #00EE00; }
+    #fakratEI.zettel { background-color: #0066FF; }
+    #fakratMB.zettel { background-color: #FF0000; }
+    #fakratMN.zettel { background-color: #FF6633; }
+    #fakratWW.zettel { background-color: #FFFAFA; border: thin solid black;}
+    #fsrIA.zettel { background-color: #A2CD5A; }
+    #fsrEI.zettel { background-color: #99CC66; }
+    #fsrMB.zettel { background-color: #FFFF66; }
+    #fsrMN.zettel { background-color: #F08080; }
     #fsrWW.zettel { background-color: #CDC0B0; }
     #stura.zettel { background-color: #FFFF00; }
-    #glsr.zettel { background-color: #FF8C69; }
-    #instwk.zettel { background-color: #32CD32; }
-    #instpk.zettel { background-color: #BCD2EE; }
+    #ursatzung.zettel { background-color: #FFFF99; }
+    #urfinanz.zettel { background-color: #BBFFFF; }
+    #glsr.zettel { background-color: #FFAACC; }
+    #instwk.zettel { background-color: #FFCC99; }
+    #instpk.zettel { background-color: #FF6666; }
     #belega.zettel { background-color: #FFFF00; }
   </style>
  </head>
@@ -330,10 +340,12 @@
      <th>Status</th>
      <td class="emptible verifyStatus" id="verifyStatus"></td>
     </tr>
+<!--
     <tr>
      <th>Wohnheim</th>
      <td class="emptible verifyWohnheim" id="verifyWohnheim"></td>
     </tr>
+-->
     <tr>
      <td><form><button type="button" onClick="jetztAbstimmen();" id="verifyOkButton" accesskey="w"><u>W</u>eiter</button></form></td>
      <td><form><button type="button" onClick="ausgabeAbbruch();" id="verifyAbortButton" accesskey="a"><u>A</u>bbruch</button></form></td>
@@ -362,10 +374,12 @@
      <th>Status</th>
      <td class="emptible verifyStatus"></td>
     </tr>
+<!--
     <tr>
      <th>Wohnheim</th>
      <td class="emptible verifyWohnheim"></td>
     </tr>
+-->
    </table>
   <div id="fakratIA" class="zettel">Fakultätsrat IA</div>
   <div id="fakratEI" class="zettel">Fakultätsrat EI</div>
@@ -378,10 +392,11 @@
   <div id="fsrMN" class="zettel">Fachschaftsrat MN</div>
   <div id="fsrWW" class="zettel">Fachschaftsrat WW</div>
   <div id="stura" class="zettel">Studierendenrat</div>
+  <div id="urfinanz" class="zettel">Urabstimmung Finanzordnung</div>
+  <div id="ursatzung" class="zettel">Urabstimmung Satzung</div>
   <div id="glsr"  class="zettel">Gleichstellungsrat</div>
   <div id="instwk" class="zettel">Institutsrat Werkstoffwissenschaften</div>
   <div id="instpk" class="zettel">Institutsrat Physik</div>
-  <div id="belega" class="zettel">Belegungsausschuss</div>
   <div><form><button accesskey="w" type="button" id="ausgabeOkButton" onClick="ausgabeSpeichern()">Stimmzettel <u>w</u>urden ausgegeben</button> <button type="button" accesskey="a" onClick="ausgabeAbbruch();" id="ausgabeAbortButton">Ausgabe vollständig <u>a</u>bgebrochen.</button></form></div>
   </div>
   <div id="studentenwerkDialog" title="Stimmberechtigung im Wohnheim prüfen">
