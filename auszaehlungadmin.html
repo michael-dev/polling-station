@@ -70,28 +70,56 @@
     $(base + ' .Kandidat').remove();
     $.post("action/kandidat.php", {wahl: wahlId}, function(r, textStatus, jqXHR) {
      jQuery.each(r, function(i, val) {
-      var elem = $('<input type="text">');
+      var elem = $('<tr/>');
       elem.attr("class","Kandidat");
-      elem.attr("name","name[]");
-      elem.attr("value",val.name);
       elem.appendTo($(base));
+      var elem2 = $('<input type="text">');
+      elem2.attr("name","name[]");
+      elem2.attr("value",val.name);
+      $('<td/>').append(elem2).appendTo(elem);
+      var elem3 = $('<input type="text">');
+      elem3.attr("name","kid[]");
+      elem3.attr("value",val.kid);
+      $('<td/>').append(elem3).appendTo(elem);
      });
      appendNewKandidat();
     }).error(function(r) { alert("Die Kandidaten konnten nicht geladen werden.\n"+r.responseText); });
    }
 
    function appendNewKandidat() {
-    $('#WahlenKandidaten').append('<input class="Kandidat" name="name[]" onFocus="appendNewKandidat(); $(this).removeAttr(\'onFocus\');">');
+    $('#WahlenKandidaten').append('<tr class="Kandidat"><td><input name="name[]" onFocus="appendNewKandidat(); $(this).removeAttr(\'onFocus\');"></td><td><input name="kid[]"></td></tr>');
    }
 
    function saveWahl() {
-    var kandidaten = Array();
-    jQuery.each($('#WahlenKandidaten .Kandidat'), function(i, elem) {
-     if ($(elem).val() != "") {
-      kandidaten.push($(elem).val());
-     }
-    });
-    $.post("action/savewahl.php", {wahl: $('#mgmWahlSelect').val(), name: $('#wahlName').val(), kandidaten: kandidaten}, function(r, textStatus, jqXHR) {
+    var kandidatenName = Array();
+    var kandidatenKid = Array();
+    var data = new FormData();
+    var useUpload = false;
+    if (document.getElementById('kandidatfile').files.length > 0) {
+      useUpload = confirm("Sollen wirklich die Daten aus der Datei verwendet werden?");
+    }
+    if (useUpload) {
+      data.append( 'file' , document.getElementById('kandidatfile').files[0] );
+    } else {
+      jQuery.each($('#WahlenKandidaten .Kandidat'), function(i, elem) {
+        var name = $(elem).find('input[name="name[]"]').val();
+        var kid = $(elem).find('input[name="kid[]"]').val();
+        if (name != "") {
+          data.append( 'kandidatenName[]', name);
+          data.append( 'kandidatenKid[]', kid);
+        }
+       });
+    }
+    data.append('wahl', $('#mgmWahlSelect').val());
+    data.append('name', $('#wahlName').val());
+    $.ajax({
+      url: 'action/savewahl.php',
+      data: data,
+      cache: false,
+      contentType: false,
+      processData: false,
+      type: 'POST'
+    }).success(function() {
      alert("Die Wahl wurde erfolgreich gespeichert.");
      loadWahl();
     }).error(function(r) { alert("Die Wahl konnte nicht gespeichert werden.\n"+r.responseText); });
@@ -174,7 +202,6 @@
   </script>
   <style type="text/css">
     #tabs > div { min-height: 600px; }
-    #Wahlen input.Kandidat { display: block; }
     #stapelTable { text-align: center; }
     #stapelTable tr:nth-child(odd)    { background-color:#eee; }
     #stapelTable tr:nth-child(even)   { background-color:#fff; }
@@ -207,7 +234,10 @@
   </div>
   <div id="Wahlen">
    <form onSubmit="return false;"><select id="mgmWahlSelect" class="wahlSelect" onChange="selectWahl('mgmWahlSelect');"></select> <input type="text" name="wahlname" id="wahlName"/></form>
-   <div id="WahlenKandidaten"></div>
+   <table id="WahlenKandidaten">
+   <tr><th>Name</th><th>KID</th></tr>
+   </table>
+   <div><label for="file">Kandidatenliste ersetzen durch Upload:</label><input id="kandidatfile" type="file" name="file"> (GZIP-komprimierte CSV Datei mit Kopfzeile und (kid,name))</div>
    <button onClick="saveWahl();">Speichern</button> <button onClick="deleteWahl();">Löschen</button>
   </div>
   <div id="Stapel">

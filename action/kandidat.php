@@ -2,7 +2,7 @@
 
 require "../lib/auth.php";
 
-$sth = newStm("Select id as id, name as name from kandidat where wahl = :wahl order by id ASC");
+$sth = newStm("Select id as id, name as name, kid as kid from kandidat where wahl = :wahl order by id ASC");
 execStm($sth,Array(":wahl" => $_REQUEST["wahl"]));
 
 try {
