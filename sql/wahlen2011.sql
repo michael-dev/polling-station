@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS `kandidat` (
   `id` int(11) NOT NULL,
   `name` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   `wahl` int(11) NOT NULL,
+  `kid` int(11) NULL,
   PRIMARY KEY (`id`,`wahl`),
   KEY `wahl` (`wahl`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
