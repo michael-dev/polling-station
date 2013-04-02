@@ -193,6 +193,10 @@
     var wahlId = $('#ergWahlSelect').val();
     self.location.href="action/statwahlpdf.php?wahl="+wahlId+"&nonce="+(new Date()).getTime();
    }
+   function ergWahlDownload() {
+    var wahlId = $('#ergWahlSelect').val();
+    self.location.href="action/statwahldownload.php?wahl="+wahlId+"&nonce="+(new Date()).getTime();
+   }
    /* Nutzerverwaltung */
    function saveUser() {
     var data = {name: $('#username').val(),
@@ -255,6 +259,7 @@
     <tr><th>Kandidat</th><th>Anzahl der Stimmen</th></tr>
    </table>
    <button onClick="ergWahlPDF();">PDF</button>
+   <button onClick="ergWahlDownload();">Export für Wahlenwebseite</button>
   </div>
  </body>
 </html>
