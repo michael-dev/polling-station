@@ -21,7 +21,13 @@ $sth = newStm("SELECT COUNT(*) AS anzahl FROM kandidat WHERE wahl = :wid");
 execStm($sth, Array(":wid" => $wahlId));
 $r = $sth->fetchAll(PDO::FETCH_ASSOC);
 $numKand = $r[0]["anzahl"];
-$orientation = ($numKand <= 15) ? "portrait" : "landscape";
+if ($numKand <= 15) {
+  $orientation = "portrait";
+  $itemPerPage = 40;
+} else {
+  $orientation = "landscape";
+  $itemPerPage = 20;
+}
 
 $base = dirname(dirname(__FILE__))."/latex";
 $tmpfname = tempnam($tempdir, "STATWAHL");
@@ -192,7 +198,7 @@ foreach ($r as $row) {
  $lfdNr++;
 
  /* print page break */
- if ($lfdNr % 40 == 0) {
+ if ($lfdNr % $itemPerPage == 0) {
   fwrite($handle, "\\hline\n");
   fwrite($handle, pageBreakingRow($votesCounter,"Zwischensumme"));
   fwrite($handle, ballotTableFooter($candidate));
