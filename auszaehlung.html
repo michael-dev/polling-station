@@ -414,6 +414,10 @@
     if (newMaxVoteCheckCount != null) {
      maxVoteCheckCount = parseInt(newMaxVoteCheckCount);
      $('#maxVoteCheckCount').text(maxVoteCheckCount);
+     // don't skip this ballot here
+     if (currentBallotId > -1) {
+       currentBallotId = currentBallotId - 1;
+     }
      nextVerify(false);
     }
    }
