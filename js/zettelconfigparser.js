@@ -1,8 +1,11 @@
 var zettelconfig = null
 
 function zettelconfiginit() {
-  $.ajax('lib/config.ini', {'async': false})
+  $.ajax('lib/config.ini', {'async': false, 'dataType': 'text'})
    .success(function (values, status, req) {
+     if (typeof(values) != 'string') {
+       alert('Die Konfigurationsdatei konnte nicht geladen werden. Es liegen keine Informationen über die Gremien vor.');
+     }
      cfglines = values.split(/\r?\n/);
      zettelconfig = {};
      var section = '';
