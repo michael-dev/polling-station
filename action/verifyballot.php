@@ -17,8 +17,10 @@ require "../lib/auth.php";
 //  found => true of ballot found
 execStm(newStm("BEGIN;"),Array());
 $txt = "";
-foreach ($_REQUEST as $k => $v)
+foreach ($_REQUEST as $k => $v) {
+ if (is_array($v)) $v = join(",",$v);
  $txt .= " $k => $v";
+}
 dblog("verfyBallot $txt");
 
 $sth = newStm("SELECT COUNT(*) as i FROM stapel WHERE id = :stapelid AND wahl = :wahlid AND (expiresAt < CURRENT_TIMESTAMP OR session = :session)");
