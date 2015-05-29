@@ -135,7 +135,7 @@
       }
       if (zettelconfig[k]['stud']) {
         stud = $('#verifyStud').text().toLowerCase();
-        selector = selector && ($.inArray(fak, zettelconfig[k]['stud']) >= 0);
+        selector = selector && ($.inArray(stud, zettelconfig[k]['stud']) >= 0);
       }
       if (selector && zettelconfig[k]['ask']) {
         questions[k] = zettelconfig[k];
@@ -222,7 +222,7 @@
       }
       if (zettelconfig[k]['stud']) {
         stud = $('#verifyStud').text().toLowerCase();
-        selector = selector && ($.inArray(fak, zettelconfig[k]['stud']) >= 0);
+        selector = selector && ($.inArray(stud, zettelconfig[k]['stud']) >= 0);
       }
       if (zettelconfig[k]['ask']) {
         selector = selector && questions[k].reply;
