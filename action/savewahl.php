@@ -4,9 +4,9 @@ require "../lib/auth.php";
 
 execStm(newStm("BEGIN;"),Array());
 if (!isset($_FILES["file"])) {
+  $kandidatenName = $_REQUEST["kandidatenName"];
+  $kandidatenKid = $_REQUEST["kandidatenKid"];
   dblog("saveWahl in ".$_REQUEST["wahl"]." with name ".$_REQUEST["name"]." and kandidates ".join(",",$kandidatenName)." and kids ".join(",",$kandidatenKid));
-  $kandidatenName = $kandidatenName;
-  $kandidatenKid = $kandidatenKid;
 } elseif($_FILES["file"]["error"] != 0) {
   header("HTTP/1.0 500 Internal Server Error");
   echo "Error: file upload failed";
