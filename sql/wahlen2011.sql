@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS `stimmberechtigt` (
   `geburtsdatum` date NOT NULL,
   `fakultaet` varchar(2) COLLATE utf8_unicode_ci NOT NULL,
   `studiengang` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  `freigegeben` tinyint(1) NOT NULL,
+  `freigegeben` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `mtknr` (`mtknr`),
   KEY `geburtsdatum` (`geburtsdatum`),
