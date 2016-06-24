@@ -145,7 +145,7 @@
           if (parseInt(val.numBallot) == 0) {
             val.minVerify = "n/a";
           }
-          $('#stapelTable tr:last').after('<tr class="dataRow" onClick="handleStapel('+val.wahl+','+val.id+','+val.numVotes+');"><td>'+val.wahlname+'</td><td>'+val.wahl+"/"+val.id+'</td><td>'+val.numVotes+'</td><td>'+val.numBallot+'</td><td>'+val.minVerify+'</td></tr>');
+          $('#stapelTable tr:last').after('<tr class="dataRow" onClick="handleStapel('+val.wahl+','+val.id+','+val.numVotes+');"><td>'+val.wahlname+'</td><td>'+val.wahl+"/"+val.id+'</td><td>'+val.numVotes+'</td><td>'+val.numBallot+'</td><td>'+val.minVerify+'</td><td>'+val.todoBallot+'</td><td>'+val.doneBallot+'</td></tr>');
         });
         if (r.length == 0) {
          alert("Es liegen keine Stapel vor.");
@@ -250,7 +250,7 @@
    Filter: Wahl = <select id="stapelWahlSelect" class="wahlSelect" onChange="selectWahl('stapelWahlSelect');"></select>, Überprüfungen &le;<input type="text" name="filterMaxVerify" id="filterMaxVerify" value="-1" style="width: 50px;" title="-1 für beliebig"/>
    </form>
    <table border="0" id="stapelTable">
-   <tr><th>Wahl</th><th>Stapel-Nr</th><th>Anzahl der Stimmen<br/>(SOLL je Zettel)</th><th>Anzahl der Stimmzettel</th><th>Anzahl der Überprüfungen</th></tr>
+   <tr><th>Wahl</th><th>Stapel-Nr</th><th>Anzahl der Stimmen<br/>(SOLL je Zettel)</th><th>Anzahl der Stimmzettel</th><th>Anzahl der Überprüfungen</th><th>Zahl der zu prüfenden Stimmzettel</th><th>Zahl der fertig geprüften Stimmzettel</th></tr>
    </table>
   </div>
   <div id="Ergebnis">
